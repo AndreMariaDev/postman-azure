@@ -1,0 +1,175 @@
+Criar um Banco de Dados SQL de produção
+1- Criar um grupo de recursos
+	O que é: 
+		* Um grupo de recursos é um contêiner lógico no qual os recursos do Azure, 
+		  como aplicativos Web, bancos de dados e contas de armazenamento, 
+		  são implantados e gerenciados. 
+	Comando No CLI:
+		az group create --name <nameResourceGroup> --location "<region>"
+		az group create --name myResourceGroup --location "West Europe"
+		
+	Parametros:
+		<nameResourceGroup>
+		<region>
+2- 	Criar um servidor lógico do Banco de Dados SQL	
+
+	O que é:
+	
+	Comando No CLI:
+		az sql server create --name <server-name> --resource-group myResourceGroup --location "West Europe" --admin-user <db-username> --admin-password <db-password>
+		az sql server create --name <server-name> --resource-group <nameResourceGroup> --location "<region>" --admin-user <db-username> --admin-password <db-password>
+	
+	Parametros:	
+		<server-name>
+		<nameResourceGroup>
+		<region>
+		<db-username>
+		<db-password>
+
+3- Configurar uma regra de firewall de servidor
+	Para utilização interna no Azure 
+		Definir IP inicial e IP final como 0.0.0.0
+		Caso queira fazer consultas de sua máquina indique o ip correspondente
+		
+	O que é:
+	
+	Comando No CLI:
+	
+		[Para utilização interna no Azure ]
+		az sql server firewall-rule create --resource-group <nameResourceGroup> --server <server-name> --name AllowAzureIps --start-ip-address 0.0.0.0 --end-ip-address 0.0.0.0
+	
+		[Para utilização de consultas externas ]
+		az sql server firewall-rule create --name AllowLocalClient --server <server-name> --resource-group myResourceGroup --start-ip-address=<your-ip-address> --end-ip-address=<your-ip-address>
+		az sql server firewall-rule create --name AllowLocalClient --server <server-name> --resource-group <nameResourceGroup> --start-ip-address=<your-ip-address> --end-ip-address=<your-ip-address>
+	
+	Parametros:	
+		<server-name>
+		<nameResourceGroup>
+		<your-ip-address>
+		
+4- Criar um banco de dados
+	
+	Comando No CLI:
+		az sql db create --resource-group <nameResourceGroup> --server <server-name> --name coreDB --service-objective S0
+	
+	Parametros:	
+		<server-name>
+		<nameResourceGroup>
+		
+5- Recuperar ConnectionString
+	
+	Comando No CLI:
+		az sql db show-connection-string --client ado.net --server <server-name> --name coreDB
+	Parametros:	
+		<server-name>
+		
+6- Configurar o aplicativo para se conectar ao banco de dados de produção
+
+	a) Crete Migartion 
+		dotnet ef migrations add InitialCreate
+	b) Set connection string to production database
+		$env:ConnectionStrings:MyDbConnection="<connection-string>"
+		ou 
+		set ConnectionStrings:MyDbConnection=<connection-string>
+	c) Run migrations
+		dotnet ef database update
+		
+Implantar o aplicativo no Azure
+
+1- Configurar a implantação do git local
+
+	Comando No CLI:
+		az webapp deployment user set --user-name <user_name_git_azure> --password <password_git_azure>
+	Parametros:
+		<user_name_git_azure>
+		<password_git_azure>
+
+2- Criar um plano de Serviço de Aplicativo
+
+	Comando No CLI:
+		az appservice plan create --name <nameAppServicePlan> --resource-group <nameResourceGroup> --sku FREE --is-linux
+		
+	Parametros:
+		<nameAppServicePlan>
+		<nameResourceGroup>
+		
+3- Criar um aplicativo Web
+
+	Comando No CLI:
+		az webapp create --resource-group <nameResourceGroup> --plan <nameAppServicePlan> --name <app-name> --runtime 'DOTNET|<version>' --deployment-local-git
+
+	Parametros:
+		<nameResourceGroup>
+		<nameAppServicePlan>
+		<app-name>
+		<version>
+		
+ Observação:
+	A URL do Git remoto é mostrada na propriedade deploymentLocalGitUrl com o formato 
+	https://<user_name_git_azure>@<app-name>.scm.azurewebsites.net/<app-name>.git. 
+	Salve essa URL, pois você precisará dela mais tarde.
+	
+4- Configurar a ConnectionString
+
+	Comando No CLI:
+		az webapp config connection-string set --resource-group <nameResourceGroup> --name <app-name> --settings MyDbConnection='<connection-string>' --connection-string-type SQLAzure
+	
+	Parametros:
+		<nameResourceGroup>
+		<app-name>
+		<connection-string>
+		
+5- Enviar do Git para o Azure
+	
+	Passo 1:
+	Comando No CLI:
+		az webapp config appsettings set --name <app-name> --resource-group <nameResourceGroup> --settings DEPLOYMENT_BRANCH='main'
+		
+	Parametros:
+		<nameResourceGroup>
+		<app-name>
+		
+	Passo 2:
+		git remote add azure <deploymentLocalGitUrl-from-create-step>
+	
+	Passo 3:
+		git push azure main
+		
+6- Navegar até o aplicativo do Azure
+
+	http://<app-name>.azurewebsites.net
+
+	Parametros:
+		<app-name>
+		
+Publicar alterações no Azure
+
+git add .
+git commit -m "added done field"
+git push azure main
+
+Logs de diagnóstico de fluxo
+
+	Passo 1:
+	Comando No CLI:
+		az webapp log config --name <app-name> --resource-group <nameResourceGroup> --application-logging filesystem --level information
+		
+	Parametros:
+		<nameResourceGroup>
+		<app-name>
+		
+	Passo 2:
+	Comando No CLI:
+		az webapp log tail --name <app-name> --resource-group <nameResourceGroup>
+	
+	Passo 3:
+		Para interromper o streaming de log a qualquer momento, digite Ctrl+C
+		
+
+Limpar os recursos
+	
+	Comando No CLI:
+		az group delete --name myResourceGroup
+		
+	Parametros:
+		<nameResourceGroup>

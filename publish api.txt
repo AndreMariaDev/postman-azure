@@ -1,0 +1,490 @@
+Criando um Pipeline de CI no @Azure DevOps
+
+Para projetos publicos temos 1800 minutos de graça.
+
+https://www.youtube.com/watch?v=zjKAG7JkPws&list=PLMFPOLE2cW1yXGKZ6Mt12P1ewsmmgRQTk&index=3
+
+
+Implantando aplicações com @Azure DevOps
+https://www.youtube.com/watch?v=Po0vuWxZLf4&list=PLMFPOLE2cW1yXGKZ6Mt12P1ewsmmgRQTk&index=4
+
+
+az webapp up --sku F1 --name a-m-2022-01-31-WebApp --os-type linux
+az webapp up --sku F1 --name AndreMariaWebApp --os-type windows
+
+http://AndreMariaWebApp.azurewebsites.net
+passos:
+
+Criar um grupo de recursos
+az group create --name myResourceGroup --location "West Europe"
+
+{
+  "id": "/subscriptions/3c522241-1db2-4f5f-b295-2b44d591d9a4/resourceGroups/myResourceGroup",
+  "location": "westeurope",
+  "managedBy": null,
+  "name": "myResourceGroup",
+  "properties": {
+    "provisioningState": "Succeeded"
+  },
+  "tags": null,
+  "type": "Microsoft.Resources/resourceGroups"
+}
+
+Criar um servidor lógico do Banco de Dados SQL
+az sql server create --name tutorial-sql-dotnetcore --resource-group myResourceGroup --location "West Europe" --admin-user "user-db-tutorial" --admin-password "!@#$%QaWsEdRf"
+
+{
+  "administratorLogin": "user-db-tutorial",
+  "administratorLoginPassword": null,
+  "administrators": null,
+  "federatedClientId": null,
+  "fullyQualifiedDomainName": "tutorial-sql-dotnetcore.database.windows.net",
+  "id": "/subscriptions/3c522241-1db2-4f5f-b295-2b44d591d9a4/resourceGroups/myResourceGroup/providers/Microsoft.Sql/servers/tutorial-sql-dotnetcore",
+  "identity": null,
+  "keyId": null,
+  "kind": "v12.0",
+  "location": "westeurope",
+  "minimalTlsVersion": null,
+  "name": "tutorial-sql-dotnetcore",
+  "primaryUserAssignedIdentityId": null,
+  "privateEndpointConnections": [],
+  "publicNetworkAccess": "Enabled",
+  "resourceGroup": "myResourceGroup",
+  "restrictOutboundNetworkAccess": "Disabled",
+  "state": "Ready",
+  "tags": null,
+  "type": "Microsoft.Sql/servers",
+  "version": "12.0",
+  "workspaceFeature": null
+}
+Configurar uma regra de firewall de servidor
+az sql server firewall-rule create --name AllowLocalClient --server tutorial-sql-dotnetcore --resource-group myResourceGroup --start-ip-address=20.101.166.157 --end-ip-address=20.101.166.157
+{
+  "endIpAddress": "192.168.0.178",
+  "id": "/subscriptions/3c522241-1db2-4f5f-b295-2b44d591d9a4/resourceGroups/myResourceGroup/providers/Microsoft.Sql/servers/tutorial-sql-dotnetcore/firewallRules/AllowLocalClient",
+  "name": "AllowLocalClient",
+  "resourceGroup": "myResourceGroup",
+  "startIpAddress": "192.168.0.178",
+  "type": "Microsoft.Sql/servers/firewallRules"
+}
+
+Criar um banco de dados
+az sql db create --resource-group myResourceGroup --server tutorial-sql-dotnetcore --name coreDB --service-objective S0
+
+{
+  "autoPauseDelay": null,
+  "catalogCollation": "SQL_Latin1_General_CP1_CI_AS",
+  "collation": "SQL_Latin1_General_CP1_CI_AS",
+  "createMode": null,
+  "creationDate": "2022-01-31T22:01:30.460000+00:00",
+  "currentBackupStorageRedundancy": "Geo",
+  "currentServiceObjectiveName": "S0",
+  "currentSku": {
+    "capacity": 10,
+    "family": null,
+    "name": "Standard",
+    "size": null,
+    "tier": "Standard"
+  },
+  "databaseId": "38619d7d-2239-4980-baf1-b1b8a6a574a2",
+  "defaultSecondaryLocation": "northeurope",
+  "earliestRestoreDate": null,
+  "edition": "Standard",
+  "elasticPoolId": null,
+  "elasticPoolName": null,
+  "failoverGroupId": null,
+  "highAvailabilityReplicaCount": null,
+  "id": "/subscriptions/3c522241-1db2-4f5f-b295-2b44d591d9a4/resourceGroups/myResourceGroup/providers/Microsoft.Sql/servers/tutorial-sql-dotnetcore/databases/coreDB",
+  "isInfraEncryptionEnabled": false,
+  "kind": "v12.0,user",
+  "ledgerOn": false,
+  "licenseType": null,
+  "location": "westeurope",
+  "longTermRetentionBackupResourceId": null,
+  "maintenanceConfigurationId": "/subscriptions/3c522241-1db2-4f5f-b295-2b44d591d9a4/providers/Microsoft.Maintenance/publicMaintenanceConfigurations/SQL_Default",
+  "managedBy": null,
+  "maxLogSizeBytes": null,
+  "maxSizeBytes": 268435456000,
+  "minCapacity": null,
+  "name": "coreDB",
+  "pausedDate": null,
+  "readScale": "Disabled",
+  "recoverableDatabaseId": null,
+  "recoveryServicesRecoveryPointId": null,
+  "requestedBackupStorageRedundancy": "Geo",
+  "requestedServiceObjectiveName": "S0",
+  "resourceGroup": "myResourceGroup",
+  "restorableDroppedDatabaseId": null,
+  "restorePointInTime": null,
+  "resumedDate": null,
+  "sampleName": null,
+  "secondaryType": null,
+  "sku": {
+    "capacity": 10,
+    "family": null,
+    "name": "Standard",
+    "size": null,
+    "tier": "Standard"
+  },
+  "sourceDatabaseDeletionDate": null,
+  "sourceDatabaseId": null,
+  "status": "Online",
+  "tags": null,
+  "type": "Microsoft.Sql/servers/databases",
+  "zoneRedundant": false
+}
+
+Recuperar a cadeia de conexão
+az sql db show-connection-string --client ado.net --server tutorial-sql-dotnetcore --name coreDB
+
+Server=tcp:tutorial-sql-dotnetcore.database.windows.net,1433;Database=coreDB;User ID=user-db-tutorial;Password=!@#$%QaWsEdRf;Encrypt=true;Connection Timeout=30;
+
+# Delete old migrations
+rm -r Migrations
+# Recreate migrations with UseSqlServer (see previous snippet)
+dotnet ef migrations add InitialCreate
+
+# Set connection string to production database
+# PowerShell
+$env:ConnectionStrings:MyDbConnection="Server=tcp:tutorial-sql-dotnetcore.database.windows.net,1433;Database=coreDB;User ID=user-db-tutorial;Password=!@#$%QaWsEdRf;Encrypt=true;Connection Timeout=30;"
+# CMD (no quotes)
+set ConnectionStrings:MyDbConnection=Server=tcp:tutorial-sql-dotnetcore.database.windows.net,1433;Database=coreDB;User ID=user-db-tutorial;Password=!@#$%QaWsEdRf;Encrypt=true;Connection Timeout=30;
+# Bash (no quotes)
+export ConnectionStrings__MyDbConnection=Server=tcp:tutorial-sql-dotnetcore.database.windows.net,1433;Database=coreDB;User ID=user-db-tutorial;Password=!@#$%QaWsEdRf;Encrypt=true;Connection Timeout=30;
+
+# Run migrations
+dotnet ef database update
+
+Configurar a implantação do git local
+
+az webapp deployment user set --user-name andre.maria.1980 --password !@ndre1980
+
+{
+  "id": null,
+  "kind": null,
+  "name": "web",
+  "publishingPassword": null,
+  "publishingPasswordHash": null,
+  "publishingPasswordHashSalt": null,        
+  "publishingUserName": "andre.maria.1980",  
+  "scmUri": null,
+  "systemData": null,
+  "type": "Microsoft.Web/publishingUsers/web"
+}
+
+Criar um plano de Serviço de Aplicativo
+
+az appservice plan create --name myAppServicePlan --resource-group myResourceGroup --sku FREE --is-linux
+
+{
+  "freeOfferExpirationTime": null,
+  "geoRegion": "West Europe",
+  "hostingEnvironmentProfile": null,
+  "hyperV": false,
+  "id": "/subscriptions/3c522241-1db2-4f5f-b295-2b44d591d9a4/resourceGroups/myResourceGroup/providers/Microsoft.Web/serverfarms/myAppServicePlan",
+  "isSpot": false,
+  "isXenon": false,
+  "kind": "linux",
+  "location": "westeurope",
+  "maximumElasticWorkerCount": 1,
+  "maximumNumberOfWorkers": 0,
+  "name": "myAppServicePlan",
+  "numberOfSites": 0,
+  "perSiteScaling": false,
+  "provisioningState": "Succeeded",
+  "reserved": true,
+  "resourceGroup": "myResourceGroup",
+  "sku": {
+    "capabilities": null,
+    "capacity": 1,
+    "family": "U",
+    "locations": null,
+    "name": "U13",
+    "size": "U13",
+    "skuCapacity": null,
+    "tier": "LinuxFree"
+  },
+  "spotExpirationTime": null,
+  "status": "Ready",
+  "subscription": "3c522241-1db2-4f5f-b295-2b44d591d9a4",
+  "systemData": null,
+  "tags": null,
+  "targetWorkerCount": 0,
+  "targetWorkerSizeId": 0,
+  "type": "Microsoft.Web/serverfarms",
+  "workerTierName": null
+}
+
+Criar um aplicativo Web
+
+az webapp create --resource-group myResourceGroup --plan myAppServicePlan --name afom-first-app-tutorial --runtime 'DOTNET|6.0' --deployment-local-git
+
+{
+  "availabilityState": "Normal",
+  "clientAffinityEnabled": true,
+  "clientCertEnabled": false,
+  "clientCertExclusionPaths": null,
+  "clientCertMode": "Required",
+  "cloningInfo": null,
+  "containerSize": 0,
+  "customDomainVerificationId": "79ED009290B71AFB58A4BD5F4A626A55E94F7BDCF8F5B85068D7198587309C5C",
+  "dailyMemoryTimeQuota": 0,
+  "defaultHostName": "afom-first-app-tutorial.azurewebsites.net",
+  "deploymentLocalGitUrl": "https://andre.maria.1980@afom-first-app-tutorial.scm.azurewebsites.net/afom-first-app-tutorial.git",
+  "enabled": true,
+  "enabledHostNames": [
+    "afom-first-app-tutorial.azurewebsites.net",
+    "afom-first-app-tutorial.scm.azurewebsites.net"
+  ],
+  "ftpPublishingUrl": "ftp://waws-prod-am2-489.ftp.azurewebsites.windows.net/site/wwwroot",
+  "hostNameSslStates": [
+    {
+      "hostType": "Standard",
+      "ipBasedSslResult": null,
+      "ipBasedSslState": "NotConfigured",
+      "name": "afom-first-app-tutorial.azurewebsites.net",
+      "sslState": "Disabled",
+      "thumbprint": null,
+      "toUpdate": null,
+      "toUpdateIpBasedSsl": null,
+      "virtualIp": null
+    },
+    {
+      "hostType": "Repository",
+      "ipBasedSslResult": null,
+      "ipBasedSslState": "NotConfigured",
+      "name": "afom-first-app-tutorial.scm.azurewebsites.net",
+      "sslState": "Disabled",
+      "thumbprint": null,
+      "toUpdate": null,
+      "toUpdateIpBasedSsl": null,
+      "virtualIp": null
+    }
+  ],
+  "hostNames": [
+    "afom-first-app-tutorial.azurewebsites.net"
+  ],
+  "hostNamesDisabled": false,
+  "hostingEnvironmentProfile": null,
+  "httpsOnly": false,
+  "hyperV": false,
+  "id": "/subscriptions/3c522241-1db2-4f5f-b295-2b44d591d9a4/resourceGroups/myResourceGroup/providers/Microsoft.Web/sites/afom-first-app-tutorial",
+  "identity": null,
+  "inProgressOperationId": null,
+  "isDefaultContainer": null,
+  "isXenon": false,
+  "kind": "app,linux",
+  "lastModifiedTimeUtc": "2022-01-31T22:55:32.380000",
+  "location": "West Europe",
+  "maxNumberOfWorkers": null,
+  "name": "afom-first-app-tutorial",
+  "outboundIpAddresses": "52.157.250.234,52.157.251.31,52.157.251.212,52.157.252.88,52.157.252.97,52.157.252.154,20.50.2.81",
+  "possibleOutboundIpAddresses": "52.157.250.234,52.157.251.31,52.157.251.212,52.157.252.88,52.157.252.97,52.157.252.154,52.157.252.208,52.157.252.252,52.157.253.7,52.157.253.50,52.157.253.158,52.157.253.184,52.157.253.219,52.157.254.17,52.157.254.30,52.157.254.42,52.157.254.117,52.157.254.130,20.82.66.239,20.82.68.13,20.82.68.152,20.82.68.155,20.82.68.161,20.82.68.162,20.50.2.81",
+  "redundancyMode": "None",
+  "repositorySiteName": "afom-first-app-tutorial",
+  "reserved": true,
+  "resourceGroup": "myResourceGroup",
+  "scmSiteAlsoStopped": false,
+  "serverFarmId": "/subscriptions/3c522241-1db2-4f5f-b295-2b44d591d9a4/resourceGroups/myResourceGroup/providers/Microsoft.Web/serverfarms/myAppServicePlan",
+  "siteConfig": {
+    "acrUseManagedIdentityCreds": false,
+    "acrUserManagedIdentityId": null,
+    "alwaysOn": false,
+    "antivirusScanEnabled": null,
+    "apiDefinition": null,
+    "apiManagementConfig": null,
+    "appCommandLine": null,
+    "appSettings": null,
+    "autoHealEnabled": null,
+    "autoHealRules": null,
+    "autoSwapSlotName": null,
+    "azureMonitorLogCategories": null,
+    "azureStorageAccounts": null,
+    "connectionStrings": null,
+    "cors": null,
+    "customAppPoolIdentityAdminState": null,
+    "customAppPoolIdentityTenantState": null,
+    "defaultDocuments": null,
+    "detailedErrorLoggingEnabled": null,
+    "documentRoot": null,
+    "experiments": null,
+    "fileChangeAuditEnabled": null,
+    "ftpsState": null,
+    "functionAppScaleLimit": 0,
+    "functionsRuntimeScaleMonitoringEnabled": null,
+    "handlerMappings": null,
+    "healthCheckPath": null,
+    "http20Enabled": false,
+    "http20ProxyFlag": null,
+    "httpLoggingEnabled": null,
+    "ipSecurityRestrictions": [
+      {
+        "action": "Allow",
+        "description": "Allow all access",
+        "headers": null,
+        "ipAddress": "Any",
+        "name": "Allow all",
+        "priority": 1,
+        "subnetMask": null,
+        "subnetTrafficTag": null,
+        "tag": null,
+        "vnetSubnetResourceId": null,
+        "vnetTrafficTag": null
+      }
+    ],
+    "javaContainer": null,
+    "javaContainerVersion": null,
+    "javaVersion": null,
+    "keyVaultReferenceIdentity": null,
+    "limits": null,
+    "linuxFxVersion": "",
+    "loadBalancing": null,
+    "localMySqlEnabled": null,
+    "logsDirectorySizeLimit": null,
+    "machineKey": null,
+    "managedPipelineMode": null,
+    "managedServiceIdentityId": null,
+    "metadata": null,
+    "minTlsVersion": null,
+    "minimumElasticInstanceCount": 0,
+    "netFrameworkVersion": null,
+    "nodeVersion": null,
+    "numberOfWorkers": 1,
+    "phpVersion": null,
+    "powerShellVersion": null,
+    "preWarmedInstanceCount": null,
+    "publicNetworkAccess": null,
+    "publishingPassword": null,
+    "publishingUsername": null,
+    "push": null,
+    "pythonVersion": null,
+    "remoteDebuggingEnabled": null,
+    "remoteDebuggingVersion": null,
+    "requestTracingEnabled": null,
+    "requestTracingExpirationTime": null,
+    "routingRules": null,
+    "runtimeADUser": null,
+    "runtimeADUserPassword": null,
+    "scmIpSecurityRestrictions": [
+      {
+        "action": "Allow",
+        "description": "Allow all access",
+        "headers": null,
+        "ipAddress": "Any",
+        "name": "Allow all",
+        "priority": 1,
+        "subnetMask": null,
+        "subnetTrafficTag": null,
+        "tag": null,
+        "vnetSubnetResourceId": null,
+        "vnetTrafficTag": null
+      }
+    ],
+    "scmIpSecurityRestrictionsUseMain": null,
+    "scmMinTlsVersion": null,
+    "scmType": null,
+    "sitePort": null,
+    "tracingOptions": null,
+    "use32BitWorkerProcess": null,
+    "virtualApplications": null,
+    "vnetName": null,
+    "vnetPrivatePortsCount": null,
+    "vnetRouteAllEnabled": null,
+    "webSocketsEnabled": null,
+    "websiteTimeZone": null,
+    "winAuthAdminState": null,
+    "winAuthTenantState": null,
+    "windowsFxVersion": null,
+    "xManagedServiceIdentityId": null
+  },
+  "slotSwapStatus": null,
+  "state": "Running",
+  "suspendedTill": null,
+  "systemData": null,
+  "tags": null,
+  "targetSwapSlot": null,
+  "trafficManagerHostNames": null,
+  "type": "Microsoft.Web/sites",
+  "usageState": "Normal"
+}
+
+https://andre.maria.1980@afom-first-app-tutorial.scm.azurewebsites.net/afom-first-app-tutorial.git
+
+Configurar a cadeia de conexão
+
+az webapp config connection-string set --resource-group myResourceGroup --name afom-first-app-tutorial --settings MyDbConnection='Server=tcp:tutorial-sql-dotnetcore.database.windows.net,1433;Database=coreDB;User ID=user-db-tutorial;Password=!@#$%QaWsEdRf;Encrypt=true;Connection Timeout=30;' --connection-string-type SQLAzure
+
+{
+  "MyDbConnection": {
+    "type": "SQLAzure",
+    "value": "Server=tcp:tutorial-sql-dotnetcore.database.windows.net,1433;Database=coreDB;User ID=user-db-tutorial;Password=!@#$%QaWsEdRf;Encrypt=true;Connection Timeout=30;"
+  }
+}
+
+Enviar do Git para o Azure
+
+az webapp config appsettings set --name afom-first-app-tutorial --resource-group myResourceGroup --settings DEPLOYMENT_BRANCH='main'
+
+[
+  {
+    "name": "DEPLOYMENT_BRANCH",
+    "slotSetting": false,       
+    "value": "main"
+  }
+]
+
+git remote add azure https://andre.maria.1980@afom-first-app-tutorial.scm.azurewebsites.net/afom-first-app-tutorial.git
+git push azure main
+
+http://<app-name>.azurewebsites.net
+
+http://afom-first-app-tutorial.azurewebsites.net
+
+az webapp log config --name afom-first-app-tutorial --resource-group myResourceGroup --application-logging filesystem --level information
+
+{
+  "applicationLogs": {
+    "azureBlobStorage": {
+      "level": "Off",
+      "retentionInDays": null,
+      "sasUrl": null
+    },
+    "azureTableStorage": {
+      "level": "Off",
+      "sasUrl": null
+    },
+    "fileSystem": {
+      "level": "Information"
+    }
+  },
+  "detailedErrorMessages": {
+    "enabled": false
+  },
+  "failedRequestsTracing": {
+    "enabled": false
+  },
+  "httpLogs": {
+    "azureBlobStorage": {
+      "enabled": false,
+      "retentionInDays": null,
+      "sasUrl": null
+    },
+    "fileSystem": {
+      "enabled": false,
+      "retentionInDays": null,
+      "retentionInMb": 35
+    }
+  },
+  "id": "/subscriptions/3c522241-1db2-4f5f-b295-2b44d591d9a4/resourceGroups/myResourceGroup/providers/Microsoft.Web/sites/afom-first-app-tutorial/config/logs",
+  "kind": null,
+  "location": "West Europe",
+  "name": "logs",
+  "resourceGroup": "myResourceGroup",
+  "systemData": null,
+  "type": "Microsoft.Web/sites/config"
+}
+
+az webapp log tail --name afom-first-app-tutorial --resource-group myResourceGroup
+
+2022-01-31T23:24:06  Welcome, you are now connected to log-streaming service.
+
